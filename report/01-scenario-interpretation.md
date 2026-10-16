@@ -75,12 +75,43 @@ To give the hub a single, reliable record of products as they move from expected
 
 ## 3.1 Assumptions
 
-
+| ID | Assumption | Stands in for | Rationale |
+|----|-----------|---------------|-----------|
+| A-01 | Staff record expected deliveries from producer messages; producers do not use the system directly | Q-01 | Scenario says producers "notify" the hub; simplest reversible option |
+| A-02 | Each product has one selling unit; staff record the supplied unit and quantity at receipt alongside the converted selling quantity | Q-02 | Keeps the original record while giving one comparable figure for availability |
+| A-03 | Producer and delivery date are mandatory at receipt; batch and use-by are recorded when supplied | Q-03 | Small producers' records are inconsistent (scenario), so stricter rules would block receipt |
+| A-04 | Any receiving staff member, including volunteers, may accept or hold goods; only the hub manager may downgrade or reject | Q-04 | Rejection affects producers and pricing, so it is treated as a manager decision |
+| A-05 | During a shortage, stock is allocated by order date until priority rules are agreed | Q-05 | Neutral, transparent and easy to replace |
+| A-06 | Customers state allowed substitutions and reduced quantities when ordering; staff record them; anything else requires contacting the customer | Q-06 | Matches the customer quote: some substitutions, not all |
+| A-07 | An agreed price adjustment is recorded as a note on the delivery line, with no amount | Q-08 | Keeps payment out of scope while preserving the decision |
+| A-08 | Held goods become available only after a completed quality check; returned perishables never re-enter stock | Q-07 | Supported by the volunteer quote; cautious for food |
+| A-09 | Volunteers see product, quantity, order reference and customer name, but no prices or commercial terms | Q-09 | Volunteers need customer names to label and hand over orders |
+| A-10 | Customers do not use the system; staff record orders and preferences received by message, phone or in person | Q-12 | Scenario describes no customer self-service; keeps scope realistic |
+| A-11 | Thresholds in the non-functional requirements (steps, seconds, product count) are working targets, not agreed figures | Q-13 | Lets NFRs be measurable before the hub confirms its expectations |
 
 ## 3.2 Clarification questions
 
-
+| ID | Question | Ask | Why it matters | Blocks |
+|----|----------|-----|----------------|--------|
+| Q-01 | Do producers enter expected deliveries themselves, or do staff record them? | Hub manager, Producer | Decides whether Producer is an actor or an offstage stakeholder | Actor-goal table, UC-01 |
+| Q-02 | How should products supplied by box or case be converted to selling units, and is the conversion fixed per product? | Hub manager | Availability figures are meaningless if units are inconsistent | FR-04, Product `sellingUnit` |
+| Q-03 | Which traceability details are mandatory at receipt, and what happens if a small producer cannot supply them? | Traceability coordinator | Determines whether incomplete deliveries are held or accepted | FR-05, A-03 |
+| Q-04 | Who may accept, downgrade or reject delivered goods, and must the producer be told? | Hub manager | Defines the receiving actor and a permission rule | UC-02, UC-03 |
+| Q-05 | When stock is short, how should hospitality customers, pre-paid boxes and community programmes be prioritised, and who decides? | Hub manager | Allocation cannot be specified fairly without it | FR-09, FR-10, A-05 |
+| Q-06 | How do customers record acceptable substitutions and reduced quantities, and must each substitution be approved? | Customer, Hub manager | Prevents unwanted substitutes at handover | FR-08, BR-05, GH-04 |
+| Q-07 | When may held or returned goods return to available stock, and who decides? | Hub manager | Directly affects the availability figure | FR-06, FR-11, BR-04 |
+| Q-08 | Should agreed price adjustments be recorded, and with what detail, given payment is out of scope? | Hub manager | Sets the scope boundary for commercial data | Scope, A-07 |
+| Q-09 | Which producer, customer and commercial details may volunteers see? | Hub manager | Defines the access-control NFR and rule | NFR-01, BR-02, A-09 |
+| Q-10 | What does "producer contributions" mean in the manager's reports: quantity supplied, accepted or sold? | Hub manager | Changes what must be recorded per producer | FR-13 |
+| Q-11 | Who decides to reopen a packed order when a late delivery arrives, and must the customer be told? | Hub manager | Defines an alternative flow and possible rule | UC-07 Pack order |
+| Q-12 | Do customers place orders and state preferences directly, or through staff? | Hub manager, Customer | Decides whether Customer is an actor | Actor-goal table, UC-04 |
+| Q-13 | How quickly must volunteers be able to record a receipt, and how many products does the hub handle at peak? | Hub manager, Packing volunteer | Sets realistic NFR thresholds | NFR-02, NFR-03 |
 
 ## 3.3 Risks
 
-
+| ID | Risk | Impact | Mitigation |
+|----|------|--------|------------|
+| R-01 | Priority rules (Q-05) stay unresolved | Allocation requirements may need rework | Keep allocation logic behind A-05 and flag dependent requirements |
+| R-02 | Volunteers skip recording steps under time pressure | Availability and traceability data become unreliable | Usability NFR limiting steps per task |
+| R-03 | Small producers cannot supply batch information | Traceability gaps for some items | A-03 allows receipt without batch, recorded as missing |
+| R-04 | Unit conversion rules differ between products | Incorrect availability figures | Q-02 raised early; record supplied and converted quantities (A-02) |
