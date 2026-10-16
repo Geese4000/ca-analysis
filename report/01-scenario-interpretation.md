@@ -38,20 +38,38 @@ The hub cannot reliably tell how much of each product it actually has available 
 
 ## 2.1 Purpose
 
-
-
+To give the hub a single, reliable record of products as they move from expected delivery to customer handover, so that staff can allocate available stock fairly, keep customers informed of shortfalls, and trace every allocated item to its produce and batch.
 
 ## 2.2 In scope
 
-
+- Recording expected deliveries from producers
+- Recording receipt and quality decisions (accept, partially accept, hold, reject) per delivery line
+- Tracking stock state: recieved, held, accepted, available, allocated
+- Recording customer orders and their substitution and reduced-quantity preferences
+- Allocating available stock to order lines, including during shortages
+- Flagging customers who need to be told about a shortfall before delivery
+- Packing, labelling and reopening orders
+- Recording handover exceptions (missing, damaged, wrong items) and returns
+- Recording traceability details at receipt and keeping them linked through allocation
+- Manager reporting on deliveries, held stock, shortages, substitutions, prepared orders and producer contributions
+- Restricting what volunters can see
 
 ## 2.3 Out of scope
 
-
+- Detailed payment and invoicing (stated in scenario); only the *fact* that a price adjustment was agreed is recorded (A-07)
+- Route optimisation for deliveries (stated in scenario); only the handover to a driver is recorded
+- Food-safety certification systems (stated in scenario)
+- Storage space and capacity planning
+- Producer and customer self-service portals (A-01, A-06)
 
 ## 2.4 Dependencies and constraints
 
-
+- **Dependency:** producers notify the hub of expected deliveries before arrival.
+- **Dependency:** physical quality checks are done by staff; the system records the outcome but does not perform the check.
+- **Constraint:** receipt and packing are largely done by volunteers, who may have limited training and time.
+- **Constraint:** volunteers must not see commercial terms.
+- **Constraint:** perishable goods have short shelf lives, so decisions on held and returned goods are time-sensitive.
+- **Constraint:** small occasional producers supply inconsistent records.
 
 # 3. Uncertainty Register
 
