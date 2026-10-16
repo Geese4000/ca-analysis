@@ -1,0 +1,121 @@
+@startuml domain-model
+' Conceptual domain model - no methods, keys, navigability or design classes
+hide methods
+hide circle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+left to right direction
+
+class Producer {
+  name
+  contactDetails
+}
+class Product {
+  name
+  variety
+  sellingUnit
+  storageType
+}
+class Delivery {
+  expectedDate
+  receivedDate
+  unannounced : Boolean
+}
+class DeliveryLine {
+  expectedQuantity
+  receivedQuantity
+  suppliedUnit
+  acceptedQuantity
+  outcome : ReceiptOutcome
+  outcomeReason
+}
+class QualityCheck {
+  checkedAt
+  passed : Boolean
+  notes
+}
+class StockLot {
+  batchCode [0..1]
+  harvestDate [0..1]
+  useByDate [0..1]
+  acceptedQuantity
+  writtenOffQuantity
+  /availableQuantity
+}
+class Customer {
+  name
+  type : CustomerType
+  contactDetails
+}
+class Order {
+  orderNumber
+  requiredDate
+  status : OrderStatus
+}
+class OrderLine {
+  requestedQuantity
+  acceptsReducedQuantity : Boolean
+  acceptsRemoval : Boolean
+  /shortfall
+}
+class Allocation {
+  quantity
+  allocatedAt
+}
+class HandoverIssue {
+  type : IssueType
+  quantity
+  description
+  stockDecision : StockDecision
+}
+class HubWorker {
+  name
+  role
+}
+
+enum ReceiptOutcome {
+  Accepted
+  PartiallyAccepted
+  Held
+  Rejected
+}
+enum CustomerType {
+  Household
+  Hospitality
+  CommunityProgramme
+}
+enum OrderStatus {
+  Open
+  Allocated
+  Packed
+  Reopened
+  HandedOver
+}
+enum IssueType {
+  Missing
+  Damaged
+  IncorrectlyAllocated
+  Returned
+}
+enum StockDecision {
+  ReturnToStock
+  WriteOff
+}
+
+Producer "1" -- "0..*" Delivery : supplies >
+Delivery "1" *-- "1..*" DeliveryLine : contains >
+DeliveryLine "0..*" -- "1" Product : is for >
+DeliveryLine "1" -- "0..*" QualityCheck : is checked by >
+DeliveryLine "1" -- "0..1" StockLot : yields >
+HubWorker "1" -- "0..*" QualityCheck : performs >
+HubWorker "1" -- "0..*" DeliveryLine : records receipt of >
+
+Customer "1" -- "0..*" Order : places >
+Order "1" *-- "1..*" OrderLine : contains >
+OrderLine "0..*" -- "1" Product : requests >
+OrderLine "0..*" -- "0..*" Product : permits as substitute >
+OrderLine "1" -- "0..*" Allocation : is fulfilled by >
+Allocation "0..*" -- "1" StockLot : draws from >
+HubWorker "1" -- "0..*" Allocation : records >
+OrderLine "1" -- "0..*" HandoverIssue : has >
+@enduml
