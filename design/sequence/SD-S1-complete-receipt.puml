@@ -1,0 +1,41 @@
+@startuml SD-S1-complete-receipt
+' Object-interaction sequence diagram for OC-04 completeReceipt (UC-02 steps 9-10)
+hide footbox
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+
+title SD-S1b completeReceipt (OC-04)
+
+participant ":ReceiveDeliveryHandler" as H
+participant "audit:AuditContext" as A
+participant "clock:Clock" as C
+participant "deliveries:DeliveryRepository" as DR
+participant "d:Delivery" as D
+participant "dl:DeliveryLine" as DL
+
+-> H : completeReceipt(deliveryId)
+activate H
+H -> A : currentUser() : UserId
+H -> C : now() : DateTime
+H -> DR : findById(deliveryId) : Delivery
+alt not found
+  <-- H : Failure(NOT_FOUND)
+else found
+  H -> D : complete(user, now)
+  activate D
+  D -> D : checkOpen()
+  loop each line
+    D -> DL : markNotReceivedIfUnrecorded()
+    D -> DL : summaryEntry() : LineSummary
+  end
+  create "s:ReceiptSummary" as S
+  D -> S : <<create>> ReceiptSummary(entries)
+  H <-- D : Result<ReceiptSummary>
+  deactivate D
+  opt success
+    H -> DR : save(d)
+  end
+  <-- H : Result<ReceiptSummary>
+end
+deactivate H
+@enduml

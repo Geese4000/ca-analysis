@@ -1,0 +1,152 @@
+@startuml DCD-fragment-S1
+' S1 input to the design class diagram (DES-12, owner Member D)
+' Every operation here is a message in SD-S1a or SD-S1b; shared types follow the integration contract
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+hide empty members
+
+package receiving {
+  class ReceiveDeliveryHandler {
+    - deliveries : DeliveryRepository
+    - producers : ProducerRepository
+    - stockLots : StockLotRepository
+    - audit : AuditContext
+    - clock : Clock
+    + startReceipt(producerId : ProducerId, deliveryId : DeliveryId [0..1]) : Result<ReceiptView>
+    + addLine(deliveryId : DeliveryId, productId : ProductId) : Result<DeliveryLineId>
+    + recordLineReceipt(lineId : DeliveryLineId, supplied : Quantity, trace : TraceDetails, outcome : ReceiptOutcome, accepted : Quantity [0..1], reason : String [0..1]) : Result<LineReceiptResult>
+    + completeReceipt(deliveryId : DeliveryId) : Result<ReceiptSummary>
+  }
+
+  class Delivery {
+    - id : DeliveryId
+    - producerId : ProducerId
+    - expectedDate : LocalDate
+    - receivedDate : LocalDate
+    - unannounced : boolean
+    - status : DeliveryStatus
+    - startedBy : UserId
+    - startedAt : DateTime
+    - completedBy : UserId
+    - completedAt : DateTime
+    + start(user : UserId, now : DateTime) : Result<Void>
+    + addLine(product : Product) : Result<DeliveryLine>
+    + recordLine(lineId : DeliveryLineId, supplied : Quantity, trace : TraceDetails, outcome : ReceiptOutcome, accepted : Quantity, reason : String, user : UserId, role : Role, now : DateTime) : Result<StockLot>
+    + complete(user : UserId, now : DateTime) : Result<ReceiptSummary>
+    - checkOpen() : Result<Void>
+  }
+
+  class DeliveryLine {
+    - id : DeliveryLineId
+    - expected : Quantity [0..1]
+    - supplied : Quantity
+    - received : Quantity
+    - accepted : Quantity
+    - outcome : ReceiptOutcome [0..1]
+    - reason : String [0..1]
+    - notReceived : boolean
+    - recordedBy : UserId
+    - recordedAt : DateTime
+    + recordReceipt(supplied : Quantity, trace : TraceDetails, outcome : ReceiptOutcome, accepted : Quantity, reason : String, user : UserId, role : Role, now : DateTime) : Result<StockLot>
+    + markNotReceivedIfUnrecorded() : void
+    + summaryEntry() : LineSummary
+    - validateAccepted(received : Quantity, accepted : Quantity) : Result<Quantity>
+  }
+
+  enum ReceiptOutcome {
+    ACCEPTED
+    PARTIALLY_ACCEPTED
+    HELD
+    REJECTED
+    + permittedFor(role : Role) : boolean
+    + createsLot() : boolean
+  }
+
+  enum DeliveryStatus {
+    EXPECTED
+    RECEIVING
+    COMPLETE
+  }
+
+  class ReceiptSummary <<DTO>> {
+    + entries : List<LineSummary>
+    + ReceiptSummary(entries : List<LineSummary>)
+  }
+
+  class LineSummary <<DTO>> {
+    + productId : ProductId
+    + expected : Quantity [0..1]
+    + received : Quantity
+    + available : Quantity
+    + held : Quantity
+    + notReceived : boolean
+    + batchMissing : boolean
+  }
+}
+
+package shared {
+  class Product {
+    - id : ProductId
+    - sellingUnit : SellingUnit
+    - conversions : Map<SellingUnit, Decimal>
+    + toSellingUnit(supplied : Quantity) : Result<Quantity>
+  }
+
+  class StockLot {
+    - id : StockLotId
+    - accepted : Quantity
+    - held : Quantity
+    - writtenOff : Quantity
+    + StockLot(product : Product, accepted : Quantity, held : Quantity, trace : TraceDetails)
+    + availableQuantity() : Quantity
+  }
+
+  class TraceDetails <<value>> {
+    - producerId : ProducerId
+    - deliveryDate : LocalDate
+    - batchCode : String [0..1]
+    - batchMissing : boolean
+    - harvestDate : LocalDate [0..1]
+    - useByDate : LocalDate [0..1]
+    + completedWith(producerId : ProducerId, deliveryDate : LocalDate) : Result<TraceDetails>
+    - validate() : Result<Void>
+  }
+
+  interface DeliveryRepository {
+    + findById(id : DeliveryId) : Optional<Delivery>
+    + findByLine(lineId : DeliveryLineId) : Optional<Delivery>
+    + save(d : Delivery) : void
+  }
+  interface StockLotRepository {
+    + save(lot : StockLot) : void
+  }
+  interface ProducerRepository {
+    + exists(id : ProducerId) : boolean
+  }
+  interface AuditContext {
+    + currentUser() : UserId
+    + currentRole() : Role
+  }
+  interface Clock {
+    + now() : DateTime
+  }
+}
+
+ReceiveDeliveryHandler ..> DeliveryRepository
+ReceiveDeliveryHandler ..> StockLotRepository
+ReceiveDeliveryHandler ..> ProducerRepository
+ReceiveDeliveryHandler ..> AuditContext
+ReceiveDeliveryHandler ..> Clock
+ReceiveDeliveryHandler ..> Delivery
+
+Delivery "1" *-- "1..*" DeliveryLine : lines
+Delivery --> DeliveryStatus
+Delivery ..> TraceDetails
+Delivery ..> ReceiptSummary : creates
+ReceiptSummary *-- LineSummary
+DeliveryLine "0..*" --> "1" Product : product
+DeliveryLine --> ReceiptOutcome
+DeliveryLine "1" --> "0..1" StockLot : yields
+StockLot "0..*" --> "1" Product : product
+StockLot "1" *-- "1" TraceDetails : trace
+@enduml
