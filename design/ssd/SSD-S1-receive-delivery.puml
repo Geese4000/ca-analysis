@@ -1,0 +1,45 @@
+@startuml SSD-S1-receive-delivery
+' System sequence diagram for UC-02 Receive delivery (+ UC-11), slice S1
+' Black-box view: one actor, the system as a single lifeline, system events and returned outcomes only
+hide footbox
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+
+title SSD-S1 Receive delivery (UC-02, UC-11)
+
+actor "Hub volunteer\n(or staff / manager)" as V
+participant ":KerryHubSystem" as S
+
+alt expected delivery exists
+  V -> S : startReceipt(producerId, deliveryId)
+  S --> V : ReceiptView (deliveryId, expected lines)
+else unannounced delivery (1a)
+  V -> S : startReceipt(producerId, none)
+  S --> V : ReceiptView (deliveryId, unannounced, no lines)
+  loop for each product delivered
+    V -> S : addLine(deliveryId, productId)
+    S --> V : deliveryLineId
+  end
+end
+
+loop for each line that arrived
+  V -> S : recordLineReceipt(deliveryLineId, supplied: Quantity,\n  trace: TraceDetails, outcome: ReceiptOutcome,\n  accepted: Quantity, reason)
+  alt valid and permitted
+    S --> V : LineReceiptResult (received, available, held, lotId?)
+  else actor not permitted to reject (6c)
+    S --> V : Failure(NOT_PERMITTED)
+  else accepted > received, accepted = 0, or no unit conversion (4a, 6e)
+    S --> V : Failure(INVALID_QUANTITY)
+  else use-by before delivery date (UC-11 3a)
+    S --> V : Failure(INVALID_TRACE)
+  end
+end
+
+V -> S : completeReceipt(deliveryId)
+S --> V : ReceiptSummary (available and held per product,\n differences from expected, lines not received,\n lines needing batch follow-up)
+
+note over V, S
+  Abandoning (9a) is not a system event: the volunteer simply stops.
+  Recorded lines keep their outcomes; the receipt stays open (RC-07).
+end note
+@enduml

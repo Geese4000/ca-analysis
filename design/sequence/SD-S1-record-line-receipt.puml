@@ -1,0 +1,65 @@
+@startuml SD-S1-record-line-receipt
+' Object-interaction sequence diagram for OC-03 recordLineReceipt (UC-02 steps 3-7, UC-11)
+' Every message here must exist as an operation in the design class diagram
+hide footbox
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+
+title SD-S1a recordLineReceipt (OC-03)
+
+participant ":ReceiveDeliveryHandler" as H
+participant "audit:AuditContext" as A
+participant "clock:Clock" as C
+participant "deliveries:DeliveryRepository" as DR
+participant "d:Delivery" as D
+participant "dl:DeliveryLine" as DL
+participant "outcome:ReceiptOutcome" as O
+participant "p:Product" as P
+participant "t:TraceDetails" as T
+participant "stockLots:StockLotRepository" as SR
+
+-> H : recordLineReceipt(lineId, supplied, trace,\n  outcome, accepted, reason)
+activate H
+H -> A : currentUser() : UserId
+H -> A : currentRole() : Role
+H -> C : now() : DateTime
+H -> DR : findByLine(lineId) : Delivery
+alt delivery not found
+  H <-- DR : none
+  <-- H : Failure(NOT_FOUND)
+else found
+  H -> D : recordLine(lineId, supplied, trace, outcome,\n  accepted, reason, user, role, now)
+  activate D
+  D -> D : checkOpen()
+  D -> T : completedWith(producerId, receivedDate) : TraceDetails
+  activate T
+  T -> T : validate()
+  deactivate T
+  D -> DL : recordReceipt(supplied, fullTrace, outcome,\n  accepted, reason, user, role, now)
+  activate DL
+  DL -> O : permittedFor(role) : boolean
+  alt not permitted (A-04)
+    D <-- DL : Failure(NOT_PERMITTED)
+  else permitted
+    DL -> P : toSellingUnit(supplied) : Quantity
+    DL -> DL : validateAccepted(received, accepted)
+    DL -> O : createsLot() : boolean
+    opt outcome is not REJECTED
+      create "lot:StockLot" as L
+      DL -> L : <<create>> StockLot(p, acceptedQty,\n  heldQty, fullTrace)
+    end
+    D <-- DL : Success(lot?)
+  end
+  deactivate DL
+  H <-- D : Result<StockLot?>
+  deactivate D
+  opt success and lot created
+    H -> SR : save(lot)
+  end
+  opt success
+    H -> DR : save(d)
+  end
+  <-- H : Result<LineReceiptResult>
+end
+deactivate H
+@enduml
