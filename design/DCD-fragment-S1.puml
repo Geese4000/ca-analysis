@@ -1,52 +1,56 @@
 @startuml DCD-fragment-S1
-' S1 input to the design class diagram (DES-12, owner Member D)
-' Every operation here is a message in SD-S1a or SD-S1b; shared types follow the integration contract
+' S1 input to the integrated design class diagram (owner Zak)
+' Every operation is either an SSD-S1 system operation or a message in SD-S1a, SD-S1b or SD-S1c
+' Attribute names follow the domain model (acceptedQuantity, heldQuantity, ...)
 skinparam shadowing false
 skinparam classAttributeIconSize 0
 hide empty members
 
 package receiving {
-  class ReceiveDeliveryHandler {
+  class ReceiveDeliveryHandler <<controller>> {
     - deliveries : DeliveryRepository
     - producers : ProducerRepository
+    - products : ProductRepository
     - stockLots : StockLotRepository
     - audit : AuditContext
     - clock : Clock
     + startReceipt(producerId : ProducerId, deliveryId : DeliveryId [0..1]) : Result<ReceiptView>
     + addLine(deliveryId : DeliveryId, productId : ProductId) : Result<DeliveryLineId>
-    + recordLineReceipt(lineId : DeliveryLineId, supplied : Quantity, trace : TraceDetails, outcome : ReceiptOutcome, accepted : Quantity [0..1], reason : String [0..1]) : Result<LineReceiptResult>
+    + recordLineReceipt(deliveryLineId : DeliveryLineId, supplied : Quantity, trace : TraceDetails, outcome : ReceiptOutcome, accepted : Quantity [0..1], reason : String [0..1]) : Result<LineReceiptResult>
     + completeReceipt(deliveryId : DeliveryId) : Result<ReceiptSummary>
   }
 
-  class Delivery {
+  class Delivery <<entity>> {
     - id : DeliveryId
     - producerId : ProducerId
-    - expectedDate : LocalDate
+    - expectedDate : LocalDate [0..1]
     - receivedDate : LocalDate
     - unannounced : boolean
     - status : DeliveryStatus
     - startedBy : UserId
     - startedAt : DateTime
-    - completedBy : UserId
-    - completedAt : DateTime
-    + start(user : UserId, now : DateTime) : Result<Void>
+    - completedBy : UserId [0..1]
+    - completedAt : DateTime [0..1]
+    + {static} startUnannounced(producerId : ProducerId, user : UserId, now : DateTime) : Delivery
+    + start(producerId : ProducerId, user : UserId, now : DateTime) : Result<Void>
     + addLine(product : Product) : Result<DeliveryLine>
-    + recordLine(lineId : DeliveryLineId, supplied : Quantity, trace : TraceDetails, outcome : ReceiptOutcome, accepted : Quantity, reason : String, user : UserId, role : Role, now : DateTime) : Result<StockLot>
+    + recordLine(deliveryLineId : DeliveryLineId, supplied : Quantity, trace : TraceDetails, outcome : ReceiptOutcome, accepted : Quantity, reason : String, user : UserId, role : Role, now : DateTime) : Result<StockLot>
     + complete(user : UserId, now : DateTime) : Result<ReceiptSummary>
     - checkOpen() : Result<Void>
   }
 
-  class DeliveryLine {
+  class DeliveryLine <<entity>> {
     - id : DeliveryLineId
-    - expected : Quantity [0..1]
-    - supplied : Quantity
-    - received : Quantity
-    - accepted : Quantity
+    - expectedQuantity : Quantity [0..1]
+    - suppliedQuantity : Quantity [0..1]
+    - receivedQuantity : Quantity [0..1]
+    - acceptedQuantity : Quantity [0..1]
     - outcome : ReceiptOutcome [0..1]
-    - reason : String [0..1]
+    - outcomeReason : String [0..1]
     - notReceived : boolean
-    - recordedBy : UserId
-    - recordedAt : DateTime
+    - recordedBy : UserId [0..1]
+    - recordedAt : DateTime [0..1]
+    + DeliveryLine(product : Product)
     + recordReceipt(supplied : Quantity, trace : TraceDetails, outcome : ReceiptOutcome, accepted : Quantity, reason : String, user : UserId, role : Role, now : DateTime) : Result<StockLot>
     + markNotReceivedIfUnrecorded() : void
     + summaryEntry() : LineSummary
@@ -75,29 +79,30 @@ package receiving {
 
   class LineSummary <<DTO>> {
     + productId : ProductId
-    + expected : Quantity [0..1]
-    + received : Quantity
-    + available : Quantity
-    + held : Quantity
+    + expectedQuantity : Quantity [0..1]
+    + receivedQuantity : Quantity
+    + availableQuantity : Quantity
+    + heldQuantity : Quantity
     + notReceived : boolean
     + batchMissing : boolean
   }
 }
 
 package shared {
-  class Product {
+  class Product <<entity>> {
     - id : ProductId
     - sellingUnit : SellingUnit
+    - perishable : boolean
     - conversions : Map<SellingUnit, Decimal>
     + toSellingUnit(supplied : Quantity) : Result<Quantity>
   }
 
-  class StockLot {
+  class StockLot <<entity>> {
     - id : StockLotId
-    - accepted : Quantity
-    - held : Quantity
-    - writtenOff : Quantity
-    + StockLot(product : Product, accepted : Quantity, held : Quantity, trace : TraceDetails)
+    - acceptedQuantity : Quantity
+    - heldQuantity : Quantity
+    - writtenOffQuantity : Quantity
+    + StockLot(product : Product, acceptedQuantity : Quantity, heldQuantity : Quantity, trace : TraceDetails)
     + availableQuantity() : Quantity
   }
 
@@ -113,15 +118,18 @@ package shared {
   }
 
   interface DeliveryRepository {
-    + findById(id : DeliveryId) : Optional<Delivery>
-    + findByLine(lineId : DeliveryLineId) : Optional<Delivery>
-    + save(d : Delivery) : void
+    + findById(deliveryId : DeliveryId) : Optional<Delivery>
+    + findByLine(deliveryLineId : DeliveryLineId) : Optional<Delivery>
+    + save(delivery : Delivery) : void
   }
   interface StockLotRepository {
     + save(lot : StockLot) : void
   }
   interface ProducerRepository {
-    + exists(id : ProducerId) : boolean
+    + exists(producerId : ProducerId) : boolean
+  }
+  interface ProductRepository {
+    + findById(productId : ProductId) : Optional<Product>
   }
   interface AuditContext {
     + currentUser() : UserId
@@ -135,6 +143,7 @@ package shared {
 ReceiveDeliveryHandler ..> DeliveryRepository
 ReceiveDeliveryHandler ..> StockLotRepository
 ReceiveDeliveryHandler ..> ProducerRepository
+ReceiveDeliveryHandler ..> ProductRepository
 ReceiveDeliveryHandler ..> AuditContext
 ReceiveDeliveryHandler ..> Clock
 ReceiveDeliveryHandler ..> Delivery

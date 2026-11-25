@@ -6,6 +6,7 @@ skinparam sequenceMessageAlign left
 
 title SD-S1b completeReceipt (OC-04)
 
+actor "Hub volunteer" as V
 participant ":ReceiveDeliveryHandler" as H
 participant "audit:AuditContext" as A
 participant "clock:Clock" as C
@@ -13,29 +14,30 @@ participant "deliveries:DeliveryRepository" as DR
 participant "d:Delivery" as D
 participant "dl:DeliveryLine" as DL
 
--> H : completeReceipt(deliveryId)
+V -> H : completeReceipt(deliveryId)
 activate H
 H -> A : currentUser() : UserId
 H -> C : now() : DateTime
 H -> DR : findById(deliveryId) : Delivery
 alt not found
-  <-- H : Failure(NOT_FOUND)
+  H --> V : Failure(NOT_FOUND)
 else found
   H -> D : complete(user, now)
   activate D
   D -> D : checkOpen()
+  ' Lines that never arrived are marked so the summary can report them (extension 3b)
   loop each line
     D -> DL : markNotReceivedIfUnrecorded()
     D -> DL : summaryEntry() : LineSummary
   end
   create "s:ReceiptSummary" as S
   D -> S : <<create>> ReceiptSummary(entries)
-  H <-- D : Result<ReceiptSummary>
+  D --> H : Result<ReceiptSummary>
   deactivate D
   opt success
     H -> DR : save(d)
   end
-  <-- H : Result<ReceiptSummary>
+  H --> V : Result<ReceiptSummary>
 end
 deactivate H
 @enduml

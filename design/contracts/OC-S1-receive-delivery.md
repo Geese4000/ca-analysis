@@ -13,7 +13,7 @@ The actor's identity and role come from `AuditContext`; the time comes from `Clo
 | **Operation** | `startReceipt(producerId: ProducerId, deliveryId: DeliveryId?): Result<ReceiptView>` |
 | **Cross-references** | UC-02 steps 1–2, extension 1a · GH-06, GH-11 · FR-01 |
 | **Preconditions** | The producer exists. If `deliveryId` is given, that delivery exists, belongs to the producer and is not complete. |
-| **Postconditions** | *Expected delivery:* `delivery.receiptStartedAt` set to `Clock.now()`; `delivery.receivedBy` associated with the current user. *Unannounced (`deliveryId` absent):* a `Delivery` instance `d` was created with `unannounced = true`, `receivedDate = today`; `d` was associated with the producer; `d.receivedBy` was associated with the current user. |
+| **Postconditions** | *Expected delivery:* `delivery.status` became `RECEIVING`; `delivery.startedAt` = `Clock.now()`; `delivery.startedBy` was associated with the current user. *Unannounced (`deliveryId` absent):* a `Delivery` instance `d` was created with `unannounced = true`, `receivedDate` = today and `status = RECEIVING`; `d` was associated with the producer; `d.startedBy` was associated with the current user and `d.startedAt` = `Clock.now()`. |
 | **Controlled failures** | `NOT_FOUND` – producer or delivery does not exist · `INVALID_STATE` – delivery belongs to another producer or is already complete (proposed code) |
 
 ## OC-02 addLine

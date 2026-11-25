@@ -1,0 +1,76 @@
+@startuml SD-S1-start-receipt
+' Object-interaction sequence diagram for OC-01 startReceipt and OC-02 addLine (UC-02 steps 1-2, extension 1a)
+hide footbox
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+
+title SD-S1c startReceipt and addLine (OC-01, OC-02)
+
+actor "Hub volunteer" as V
+participant ":ReceiveDeliveryHandler" as H
+participant "audit:AuditContext" as A
+participant "clock:Clock" as C
+participant "producers:ProducerRepository" as PR
+participant "deliveries:DeliveryRepository" as DR
+participant "products:ProductRepository" as PDR
+participant "d:Delivery" as D
+
+== OC-01 startReceipt ==
+V -> H : startReceipt(producerId, deliveryId)
+activate H
+H -> A : currentUser() : UserId
+H -> C : now() : DateTime
+H -> PR : exists(producerId) : boolean
+alt producer not found
+  H --> V : Failure(NOT_FOUND)
+else expected delivery (deliveryId given)
+  H -> DR : findById(deliveryId) : Delivery
+  alt delivery not found
+    H --> V : Failure(NOT_FOUND)
+  else found
+    ' Delivery is the expert on its own producer and status, so it checks both
+    H -> D : start(producerId, user, now) : Result
+    alt other producer or already complete
+      D --> H : Failure(INVALID_STATE)
+      H --> V : Failure(INVALID_STATE)
+    else started
+      D --> H : Success
+      H -> DR : save(d)
+      H --> V : ReceiptView (deliveryId, expected lines)
+    end
+  end
+else unannounced (deliveryId absent, extension 1a)
+  ' Static factory keeps the "unannounced" invariants inside Delivery
+  create "nd:Delivery" as ND
+  H -> ND : <<create>> startUnannounced(producerId, user, now)
+  H -> DR : save(nd)
+  H --> V : ReceiptView (deliveryId, unannounced, no lines)
+end
+deactivate H
+
+== OC-02 addLine (unannounced deliveries only) ==
+V -> H : addLine(deliveryId, productId)
+activate H
+H -> DR : findById(deliveryId) : Delivery
+H -> PDR : findById(productId) : Product
+alt delivery or product not found
+  H --> V : Failure(NOT_FOUND)
+else both found
+  H -> D : addLine(p) : Result<DeliveryLine>
+  activate D
+  D -> D : checkOpen()
+  alt announced or complete
+    D --> H : Failure(INVALID_STATE)
+    H --> V : Failure(INVALID_STATE)
+  else open and unannounced
+    ' Creator: Delivery contains its lines (composition), so it creates them
+    create "dl:DeliveryLine" as DL
+    D -> DL : <<create>> DeliveryLine(p)
+    D --> H : Success(dl)
+    H -> DR : save(d)
+    H --> V : deliveryLineId
+  end
+  deactivate D
+end
+deactivate H
+@enduml

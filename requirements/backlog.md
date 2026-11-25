@@ -11,7 +11,7 @@
   - AC-01.1 Expected, received and accepted quantities are stored separately.
   - AC-01.2 Only the accepted quantity becomes available.
   - AC-01.3 A partially accepted line records the remainder as held or rejected.
-- **Gherkin:** GH-01
+- **Gherkin:** GH-01, GH-06, GH-07, GH-08, GH-09 · **Design:** UC-02, SSD-S1, OC-01 to OC-04, SD-S1a to SD-S1c
 - **Questions / assumptions:** Q-02, A-02
 
 ## US-02 Keep unchecked goods out of stock
@@ -24,7 +24,7 @@
 - **Acceptance criteria:**
   - AC-02.1 A held line adds 0 to available stock.
   - AC-02.2 Held quantity becomes available only after a recorded quality release.
-- **Gherkin:** GH-02
+- **Gherkin:** GH-02 (receipt), GH-13 to GH-17 (release) · **Design:** UC-02, UC-03
 - **Questions / assumptions:** Q-07, A-08
 
 ## US-03 Respect substitution preferences
