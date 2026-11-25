@@ -1,0 +1,15 @@
+# 8. Design Evaluation
+
+**Cohesion.** Each selected use case has its own controller (`ReceiveDeliveryHandler` for UC-02, `ReleaseHeldStockHandler` for UC-03 [, … UC-05, UC-06]) rather than one hub facade (DR-005). Handlers only coordinate; rules sit with the objects that hold the data: `DeliveryLine` checks accepted against received, `ReceiptOutcome` holds the rejection permission, `StockLot` guards held versus available. The cost is some repetition: every handler reads the user, role and time from `AuditContext` and `Clock` before delegating.
+
+**Coupling.** Handlers depend on repository interfaces, not storage, so persistence can change without touching domain classes. `Delivery` is the aggregate root for receipt: the handler never reaches a `DeliveryLine` directly, so line rules cannot be bypassed. The strongest coupling we accepted is `DeliveryLine` creating `StockLot` (DR-006): a change to the lot's constructor affects receipt. We judged that safer than letting the handler compute accepted and held quantities itself.
+
+**Object validity.** Objects are created valid or not at all: `Delivery.startUnannounced` sets the unannounced invariants, `StockLot` is constructed with all three quantities, and every operation returns `Result<T>` so a refused request changes nothing (no partially valid objects). No class exposes a public status or quantity setter.
+
+**Main risk found in evaluation.** The manager-only rejection rule (A-04) is enforced in two places: `ReceiptOutcome.permittedFor` during receipt (UC-02) and the quality-check permission in UC-03. If Q-04 changes who may reject, both must change. A single role-permission object would remove that duplication; we did not introduce it because only two use cases need it, but it is the first refactoring we would make. [Confirm UC-03's design and update this paragraph.]
+
+**Assumptions the design depends on.** A-02 fixed conversion factors per product (`Product.toSellingUnit`); A-04 only the manager rejects; A-05 shortage priority by order date, isolated behind `AllocationPolicy` so it can change (RC-02, SPK-02); RC-05 perishables never return to stock.
+
+**Rejected alternatives.** A single `HubController` (DR-005: low cohesion as use cases are added); a separate held-goods object (SPK-01 option B: traceability details copied to two objects); the handler creating stock lots (DR-006: rule could be bypassed). [Add UC-05/UC-06 rejected alternatives, e.g. from DR-008.]
+
+**Limitations.** The design does not cover concurrent recording of the same line by two volunteers, a database design, or how notifications are actually sent (only `NotificationPort`). UC-01, UC-07, UC-08 and UC-10 are not designed. A partial release leaves one lot with mixed history; the quality-check records keep that history, but the lot itself does not show which portion came from which check.
