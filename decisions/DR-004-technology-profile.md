@@ -1,12 +1,13 @@
-# DR-004 – Technology profile for CA3
+# DR-004 – Technology profile for CA3 (superseded)
 
 | Field | Content |
 |-------|---------|
-| Date | 2026-11-15 (for agreement at contract sign-off) |
-| Status | Proposed |
+| Date | 2026-11-15 |
+| Status | **Superseded 2026-11-25** – the updated CA2 brief removed CA3; no implementation is required |
 | Proposed by | Philip Dawson-Gariepy |
-| Decided by | *(names present at sign-off)* |
-| Related | DES-07, DES-14, integration contract §6 |
+| Related | DES-07, DES-14 |
+
+> **Why superseded:** the lecturer's updated CA2 brief (30%) states "CA2 does not require software implementation" and "No CA3 implementation is required." The toolchain proof project (`ca3-toolchain-check/`) and the S1 slice specification were removed in the same change. The record is kept to show the decision history.
 
 ## Context
 
