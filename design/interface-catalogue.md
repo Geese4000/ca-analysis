@@ -114,3 +114,19 @@ Rules:
 2. `find…` returns `Optional<T>`. The handler turns an empty result into `Failure(NOT_FOUND)` (§3).
 3. `save` is called only after every check has passed (§2 rule 3).
 4. Ports are called by handlers, not by domain classes, so domain classes stay free of storage and time. The handler passes in the user, role and time they need (S1 pattern).
+
+
+## 7. Package and layer view
+
+Layer / package	Holds	May depend on
+Presentation	Screens for volunteers and staff	Slice handlers only. Out of scope for CA2.
+receiving (S1), stockdecisions (S2), allocation (S3), shortfall (S4)	One use-case controller per use case (DR-005), the slice's own domain classes, views and ports used only by that slice	shared only
+shared.domain	Classes and values in §5	shared.result
+shared.ports	Ports in §6 used by more than one slice	shared.domain
+shared.result	Result<T> and ErrorCode (§2, §3)	nothing
+
+Decisions:
+
+No slice depends on another slice. Everything two slices share (StockLot, OrderLine, Allocation, …) sits in shared. This is what let the four use cases be designed in parallel and is the main Low Coupling decision of the structure.
+A port used by one slice lives in that slice: DeliveryRepository and ProducerRepository in receiving, AllocationPolicy and NotificationPort in shortfall. Otherwise shared would depend on slice classes such as Delivery.
+Rejected alternative: packages by layer only (controllers, domain, repositories). Every slice owner would edit the same packages, and a change to one use case could not be reviewed in isolation.
