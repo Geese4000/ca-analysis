@@ -102,3 +102,15 @@ Each class is designed once. The slice in *Designed by* owns its operations in t
 - `availableQuantity() = acceptedQuantity − allocatedQuantity`. Held and written-off quantities are never available (BR-01).
 - `allocatedQuantity ≤ acceptedQuantity` at all times: an allocation never takes more than `availableQuantity()` (NFR-04).
 - Every change records who and when (NFR-05) and keeps the same `trace` (BR-03).
+
+
+## 6. Ports
+
+A port is an interface the design depends on instead of storage, time or the outside world (Pure Fabrication, Indirection, Protected Variations). Implementations are outside the CA2 design.
+
+Rules:
+
+1. One repository per aggregate root. Inner objects are loaded and saved through their root: `DeliveryLine` through `Delivery`, `OrderLine` and `Allocation` through `Order`.
+2. `find…` returns `Optional<T>`. The handler turns an empty result into `Failure(NOT_FOUND)` (§3).
+3. `save` is called only after every check has passed (§2 rule 3).
+4. Ports are called by handlers, not by domain classes, so domain classes stay free of storage and time. The handler passes in the user, role and time they need (S1 pattern).
