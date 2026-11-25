@@ -1,12 +1,13 @@
 @startuml SD-S1-record-line-receipt
 ' Object-interaction sequence diagram for OC-03 recordLineReceipt (UC-02 steps 3-7, UC-11)
-' Every message here must exist as an operation in the design class diagram
+' First message matches SSD-S1 exactly; every other message is an operation in DCD-fragment-S1
 hide footbox
 skinparam shadowing false
 skinparam sequenceMessageAlign left
 
 title SD-S1a recordLineReceipt (OC-03)
 
+actor "Hub volunteer" as V
 participant ":ReceiveDeliveryHandler" as H
 participant "audit:AuditContext" as A
 participant "clock:Clock" as C
@@ -18,19 +19,19 @@ participant "p:Product" as P
 participant "t:TraceDetails" as T
 participant "stockLots:StockLotRepository" as SR
 
--> H : recordLineReceipt(lineId, supplied, trace,\n  outcome, accepted, reason)
+V -> H : recordLineReceipt(deliveryLineId, supplied, trace,\n  outcome, accepted, reason)
 activate H
 H -> A : currentUser() : UserId
 H -> A : currentRole() : Role
 H -> C : now() : DateTime
-H -> DR : findByLine(lineId) : Delivery
+H -> DR : findByLine(deliveryLineId) : Delivery
 alt delivery not found
-  H <-- DR : none
-  <-- H : Failure(NOT_FOUND)
+  H --> V : Failure(NOT_FOUND)
 else found
-  H -> D : recordLine(lineId, supplied, trace, outcome,\n  accepted, reason, user, role, now)
+  H -> D : recordLine(deliveryLineId, supplied, trace, outcome,\n  accepted, reason, user, role, now)
   activate D
   D -> D : checkOpen()
+  ' Delivery is the expert on producer and date, so it completes the trace (UC-11)
   D -> T : completedWith(producerId, receivedDate) : TraceDetails
   activate T
   T -> T : validate()
@@ -39,19 +40,20 @@ else found
   activate DL
   DL -> O : permittedFor(role) : boolean
   alt not permitted (A-04)
-    D <-- DL : Failure(NOT_PERMITTED)
+    DL --> D : Failure(NOT_PERMITTED)
   else permitted
     DL -> P : toSellingUnit(supplied) : Quantity
     DL -> DL : validateAccepted(received, accepted)
     DL -> O : createsLot() : boolean
+    ' Creator (DR-006): the line holds the initialising data, so it creates the lot
     opt outcome is not REJECTED
       create "lot:StockLot" as L
-      DL -> L : <<create>> StockLot(p, acceptedQty,\n  heldQty, fullTrace)
+      DL -> L : <<create>> StockLot(p, acceptedQuantity,\n  heldQuantity, fullTrace)
     end
-    D <-- DL : Success(lot?)
+    DL --> D : Success(lot?)
   end
   deactivate DL
-  H <-- D : Result<StockLot?>
+  D --> H : Result<StockLot?>
   deactivate D
   opt success and lot created
     H -> SR : save(lot)
@@ -59,7 +61,7 @@ else found
   opt success
     H -> DR : save(d)
   end
-  <-- H : Result<LineReceiptResult>
+  H --> V : Result<LineReceiptResult>
 end
 deactivate H
 @enduml

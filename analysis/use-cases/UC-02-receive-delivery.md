@@ -3,6 +3,7 @@
 | Field | Content |
 |-------|---------|
 | **ID / slice** | UC-02 · S1 Receive delivery |
+| **User stories** | US-01 Record what actually arrived; US-02 Keep unchecked goods out of stock (`requirements/backlog.md`) |
 | **Scope** | Kerry Local Food Hub Stock and Order System |
 | **Level** | User goal |
 | **Primary actor** | Hub volunteer (also hub staff member and hub manager by generalisation) |
@@ -52,3 +53,13 @@
 
 - Q-02 conversion factors per product are still assumptions (A-02).
 - SPK-01 decides how partial acceptance is held in the model. This use case assumes one stock lot per received line with separate held and accepted quantities.
+
+## Acceptance criteria → Gherkin
+
+| Criterion | Covered by |
+|-----------|------------|
+| AC-01.1 Expected, received and accepted quantities are stored separately | GH-01 |
+| AC-01.2 Only the accepted quantity becomes available | GH-01, GH-06, GH-09 |
+| AC-01.3 A partially accepted line records the remainder as held or rejected | GH-01 (held), GH-07 (volunteer may not reject), GH-08 (manager rejects) |
+| AC-02.1 A held line adds 0 to available stock | GH-02 |
+| AC-02.2 Held quantity becomes available only after a recorded quality release | UC-03, GH-13 (S2) |

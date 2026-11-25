@@ -65,3 +65,5 @@ Bring these cards to the CRC workshop (DES-10). Each card lists what the class *
 | `Product.toSellingUnit()` does conversion | **Information Expert / Protected Variations** | Conversion factors are product data; if Q-02 brings a richer policy, only `Product` changes. |
 | Repositories, `Clock` and `AuditContext` are interfaces | **Pure Fabrication / Indirection** | Domain classes stay free of storage and time; tests use in-memory fakes and a fixed clock. |
 | Handler talks only to `Delivery`, which talks to its lines | **Low Coupling** (Delivery as aggregate root) | The handler never reaches into a line directly, so line rules cannot be bypassed. |
+
+Full decision records with candidates and rejected alternatives: DR-005 (Controller), DR-006 (Creator).
