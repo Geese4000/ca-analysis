@@ -60,3 +60,45 @@ The full set used in CA2. Codes are upper case and describe what is wrong, not w
 | `MANAGER` | Hub manager | Reject goods at receipt (UC-02 6d, RC-03) and write off held stock (UC-03 4b) (A-04) |
 
 Permission checks live with the object that owns the rule, for example `ReceiptOutcome.permittedFor(role)` in S1, so a change to Q-04 or Q-07 changes one place per rule.
+## 5. Shared types
+
+A type is listed here when more than one use case uses it. Views and result DTOs (`ReceiptView`, `LineReceiptResult`, `HeldLotView`, `QualityCheckResult`, …) stay in the slice that returns them and are not shared.
+
+### 5.1 Identifiers and values
+
+| Type | Kind | Content | Rules |
+|------|------|---------|-------|
+| `ProducerId`, `ProductId`, `DeliveryId`, `DeliveryLineId`, `StockLotId`, `CustomerId`, `OrderId`, `OrderLineId`, `AllocationId`, `UserId` | Identifier | Opaque value | One type per kind, so a `ProductId` can never be passed where a `StockLotId` is expected. |
+| `SellingUnit` | Value | Unit of measure, e.g. kg, each, box | Each product has one selling unit (A-02). |
+| `Quantity` | Value | `amount : Decimal`, `unit : SellingUnit` | Never negative. Adding, subtracting and comparing only between the same unit; other units go through `Product.toSellingUnit` first (FR-04). |
+| `TraceDetails` | Value | Producer, delivery date, batch code or `batchMissing`, harvest date, use-by date | Valid or `INVALID_TRACE` (§3). Copied unchanged with every quantity that leaves a lot, so traceability is never lost (BR-03). |
+| `LocalDate`, `DateTime` | Value | Calendar date; point in time | `DateTime` always comes from `Clock.now()`, never from the actor (NFR-05). |
+| `Role` | Enum | `VOLUNTEER`, `STAFF`, `MANAGER` | See §4. |
+
+### 5.2 Shared domain classes
+
+Each class is designed once. The slice in *Designed by* owns its operations in the integrated design class diagram; other slices only call them.
+
+| Class | Key data | Designed by | Used by |
+|-------|----------|-------------|---------|
+| `Product` | `id`, `name`, `sellingUnit`, `perishable` (RC-05), conversion factors (A-02) | S1 | S1, S2, S3, S4 |
+| `StockLot` | `id`, `product`, `acceptedQuantity`, `heldQuantity`, `writtenOffQuantity`, `allocatedQuantity`, `trace : TraceDetails` | S1 creates it; S2 adds release and write-off; S3 adds allocation | S1, S2, S3, S4 |
+| `Order` | `id`, `customer`, `requiredDate`, `status` | Not designed in CA2 (UC-04 not selected); assumed to exist | S3, S4 |
+| `OrderLine` | `id`, `product`, `requestedQuantity`, `acceptsReducedQuantity`, `acceptsRemoval`, permitted substitutes (FR-08) | S3 (allocation); S4 adds shortfall handling | S3, S4 |
+| `Allocation` | `id`, `orderLine`, `stockLot`, `quantity`, `allocatedBy`, `allocatedAt` | S3 | S3, S4, UC-09 |
+| `Customer` | `id`, `name`, `type` (household, hospitality, community programme), contact details | Not designed in CA2; assumed to exist | S4 |
+
+### 5.3 StockLot quantity rules
+
+`StockLot` is the one object all four use cases change, so its rules are fixed here (SPK-01, RC-01).
+
+| Quantity | Changed by |
+|----------|------------|
+| `acceptedQuantity` | Set at receipt (S1); increased by a quality release (S2) |
+| `heldQuantity` | Set at receipt (S1); decreased by release or write-off (S2) |
+| `writtenOffQuantity` | Increased when the manager rejects held goods (S2) |
+| `allocatedQuantity` | Increased by an allocation (S3) |
+
+- `availableQuantity() = acceptedQuantity − allocatedQuantity`. Held and written-off quantities are never available (BR-01).
+- `allocatedQuantity ≤ acceptedQuantity` at all times: an allocation never takes more than `availableQuantity()` (NFR-04).
+- Every change records who and when (NFR-05) and keeps the same `trace` (BR-03).
