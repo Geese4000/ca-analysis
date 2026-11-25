@@ -148,7 +148,7 @@ ReceiveDeliveryHandler ..> AuditContext
 ReceiveDeliveryHandler ..> Clock
 ReceiveDeliveryHandler ..> Delivery
 
-Delivery "1" *-- "1..*" DeliveryLine : lines
+Delivery "1" *-- "0..*" DeliveryLine : lines
 Delivery --> DeliveryStatus
 Delivery ..> TraceDetails
 Delivery ..> ReceiptSummary : creates
