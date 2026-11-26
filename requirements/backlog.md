@@ -58,12 +58,12 @@
 - **Story:** As the traceability coordinator, I want to see the producer and batch of any allocated item, so that I can respond to a quality or safety query.
 - **Business value:** Restores traceability lost when stock is split (E-07).
 - **Stakeholders:** SH-04 Traceability coordinator, SH-10 Regulator
-- **Links:** FR-05, FR-09, FR-12, BR-03, NFR-05, UC-09
+- **Links:** FR-05, FR-09, FR-12, BR-03, NFR-05, UC-05, UC-09
 - **Priority:** Must
 - **Acceptance criteria:**
   - AC-05.1 Every allocation is linked to exactly one stock lot.
   - AC-05.2 A trace lists each producer and batch contributing to the order line, with quantities.
-- **Gherkin:** GH-05
+- **Gherkin:** GH-05, GH-18 to GH-22
 - **Questions / assumptions:** Q-03, A-03
 
 ## US-06 See the hub at a glance
