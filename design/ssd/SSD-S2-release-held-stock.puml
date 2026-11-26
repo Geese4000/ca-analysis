@@ -11,7 +11,7 @@ actor "Hub staff member" as A
 participant ":KerryHubSystem" as S
 
 A -> S : listHeldLots()
-S --> A : list of HeldLotView (lotId, product, producer,\n batch, held quantity, hold reason)
+S --> A : list of HeldLotView (lotId, product, producer,\n batch, held quantity)
 
 A -> S : recordQualityCheck(lotId, released: Quantity,\n  rejected: Quantity, reason)
 alt valid and permitted

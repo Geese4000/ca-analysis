@@ -14,7 +14,7 @@ Cards for the classes that realise OC-05 `recordQualityCheck` and the `listHeldL
 
 | Knows | Does | Collaborators |
 |-------|------|---------------|
-| Product, accepted, held and written-off quantities, trace details, its quality checks | Records a quality check: checks the role is permitted and the quantities fit what is held, **creates** the `QualityCheck`, moves released quantity from held to accepted and rejected quantity from held to written off; reports `availableQuantity()` (never counts held) | QualityCheck, Role, Quantity |
+| Product, accepted, held and written-off quantities, trace details, its quality checks | Records a quality check: checks the role is permitted and the quantities fit what is held, **creates** the `QualityCheck`, moves released quantity from held to accepted and rejected quantity from held to written off; reports availableQuantity()(never counts held); describes itself as aHeldLotView | QualityCheck, Role, Quantity |
 
 ### QualityCheck
 
@@ -38,7 +38,7 @@ Cards for the classes that realise OC-05 `recordQualityCheck` and the `listHeldL
 
 | Knows | Does | Collaborators |
 |-------|------|---------------|
-| `HeldLotView`: lot id, product, producer, batch, held quantity, hold reason. `QualityCheckResult`: available, held and written-off quantity after the check |(data only) | — |
+| `HeldLotView`: lot id, product, producer, batch, held quantity. `QualityCheckResult`: available, held and written-off quantity after the check |(data only) | — |
 
 ## GRASP reasoning
 

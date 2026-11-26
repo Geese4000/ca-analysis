@@ -17,7 +17,7 @@
 ## Main success scenario
 
 1. The staff member asks for stock lots with held goods.
-2. The system lists each lot with product, producer, batch, held quantity and hold reason.
+2. The system lists each lot with product, producer, batch, held quantity.
 3. The staff member selects a lot and checks the goods.
 4. The staff member records the quantity to release.
 5. The system moves that quantity from held to accepted, records the quality check with user and time, and shows the lot's new available and held quantities.
