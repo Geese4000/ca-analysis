@@ -1,0 +1,7 @@
+## 6.1 UC-02 Receive delivery – interactions
+
+SD-S1a realises OC-03. Its first message, `recordLineReceipt(deliveryLineId, …)`, is the same system event as SSD-S1. The handler delegates to `Delivery.recordLine`, which completes the trace and passes the receipt to the line; the line checks permission, converts units, validates quantities and creates the lot. Saves happen only after the last check, so every refusal leaves the system unchanged. SD-S1b and SD-S1c realise OC-04 and OC-01/OC-02. The message-to-operation table in the traceability matrix maps every message to an operation in the integrated class diagram.
+
+## 6.4 Consistency across the three use cases
+
+`StockLot` is the one class all three use cases change: UC-02 creates it, UC-03 moves held quantity to accepted or written off, UC-05 allocates from it. The fragments first disagreed on its attribute names and on the available-quantity formula; merging them into one integrated class diagram exposed both, and we fixed them in one reviewed change (DEF-02): `availableQuantity() = acceptedQuantity − allocatedQuantity`. A final check confirmed that every message in all six sequence diagrams maps to an operation in the integrated diagram, and every operation there is used.

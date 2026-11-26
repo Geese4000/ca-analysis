@@ -143,6 +143,8 @@ package shared {
     - allocatedQuantity : Quantity
     + StockLot(product : Product, acceptedQuantity : Quantity, heldQuantity : Quantity, trace : TraceDetails)
     + availableQuantity() : Quantity
+    + heldQuantity() : Quantity
+    + writtenOffQuantity() : Quantity
     + recordCheck(released : Quantity, rejected : Quantity, reason : String, user : UserId, role : Role, now : DateTime) : Result<Void>
     + heldView() : HeldLotView
     + allocate(quantity : Quantity) : Result<Void>

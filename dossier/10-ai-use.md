@@ -1,0 +1,5 @@
+# 10. AI Use and How It Was Checked
+
+Members used Claude (Anthropic) as declared in the group AI declaration and individual logs. It was used for templates, first drafts of design artefacts, consistency checks between models and wording. It did not make scope or design decisions on its own: each significant AI-supported change is listed in DR-009 with how it was evaluated.
+
+AI output was checked in three ways. First, against the brief and Session 14's design-ready audit, which found naming and sequence-diagram problems that were then fixed. Second, by independent evaluation: SPK-01 compared the AI-suggested one-lot design against an alternative before it was accepted. Third, through review of pull requests by a member who did not author the change. Where AI suggestions were changed or rejected, this is recorded in the individual logs, for example the technology profile, which was changed and later superseded.

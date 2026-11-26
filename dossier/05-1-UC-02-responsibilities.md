@@ -1,0 +1,5 @@
+## 5.1 UC-02 Receive delivery – responsibilities
+
+The CRC cards (CRC-S1) place every rule with the class that holds its data. `ReceiveDeliveryHandler` is a use-case controller (DR-005): it receives the four system events and coordinates, but makes no decisions. We rejected a single `HubController` because it would grow with every use case and every member would change the same class.
+
+`DeliveryLine` holds received and accepted quantities, so it checks that accepted never exceeds received (Information Expert) and creates the `StockLot` (Creator, DR-006). Letting the handler create the lot was rejected: it would repeat the "no lot when rejected" rule outside the domain. `Delivery`, as aggregate root, completes the trace details because only it knows the producer and date. `ReceiptOutcome.permittedFor(role)` holds the manager-only rejection rule (A-04), so a change to that rule touches one method (Protected Variations).

@@ -14,7 +14,7 @@ UC-02 Receive delivery · UC-03 Release held stock · UC-05 Allocate stock · UC
 
 ## How we work
 
-- **Backlog and board:** Trello (link: *add board URL*). Each card links to the pull request and files it produced.
+- **Backlog and board:** Trello (link: https://trello.com/invite/b/6ae8aa97f29ecaceb4239398/ATTI48b297c7096ae6107cb683c67108554f14AE61A7/ca2oopaad). Each card links to the pull request and files it produced.
 - **Changes:** one branch per backlog item; merged to `main` only through a pull request approved by the reviewer named on the card.
 - **Definition of Done:** [DR-002](decisions/DR-002-product-goal-and-dod.md).
 - **Baselines:** tag `ca1-baseline` = CA1 analysis before reconciliation; tag `ca2-submission` = the submitted design.
