@@ -1,7 +1,7 @@
 @startuml package-view
 ' Package and layer view for CA2 (DES-26), see design/interface-catalogue.md section 7
 ' Slices depend only on shared, never on each other
-' Handler names for S3 and S4 are confirmed in DES-24 and DES-25
+' UC-06 / S4 descoped (DR-011); three slices remain
 skinparam shadowing false
 skinparam packageStyle rectangle
 skinparam classAttributeIconSize 0
@@ -34,12 +34,6 @@ package "Use-case slices: application + slice domain" as slices {
   package "allocation – S3 (UC-05, UC-09)" as allocation {
     class AllocateStockHandler <<controller>>
     class TraceItemHandler <<controller>>
-  }
-
-  package "shortfall – S4 (UC-06)" as shortfall {
-    class HandleShortfallHandler <<controller>>
-    interface AllocationPolicy
-    interface NotificationPort
   }
 }
 
@@ -76,7 +70,6 @@ presentation ..> slices : calls system operations
 receiving ..> shared
 stockdecisions ..> shared
 allocation ..> shared
-shortfall ..> shared
 
 sharedports ..> shareddomain
 shareddomain ..> sharedresult
