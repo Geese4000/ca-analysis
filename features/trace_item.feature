@@ -1,11 +1,12 @@
 # Links: UC-09 Trace item, UC-11 Record traceability details
+# Slice: S3 Allocate stock
 Feature: Trace an allocated item
   The traceability coordinator can find which producer and batch supplied
   an item after stock has been split across orders.
 
   Rule: Every allocated quantity stays linked to its producer and batch (BR-03)
 
-    @GH-05 @FR-05 @FR-09 @FR-12 @BR-03 @UC-09
+    @GH-05 @FR-05 @FR-09 @FR-12 @BR-03 @UC-09 @S3
     Scenario: Trace eggs on an order back to two batches
       Given batch "B-0412" of 60 "Free-range eggs" was accepted from producer "Lispole Hens"
       And batch "B-0415" of 30 "Free-range eggs" was accepted from producer "Dingle Farm Eggs"

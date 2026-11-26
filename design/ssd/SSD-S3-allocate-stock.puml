@@ -1,0 +1,60 @@
+@startuml SSD-S3-allocate-stock
+' System sequence diagram for UC-05 Allocate stock to orders and UC-09 Trace item, slice S3
+' Black-box view: actors, the system as a single lifeline, system events and returned outcomes only
+hide footbox
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+
+title SSD-S3 Allocate stock (UC-05) and Trace item (UC-09)
+
+actor "Hub staff member" as A
+actor "Traceability coordinator\n(STAFF role)" as T
+participant ":KerryHubSystem" as S
+
+== UC-05 Allocate stock to orders ==
+
+A -> S : viewOrderForAllocation(orderId)
+alt order found and actor permitted
+  S --> A : OrderAllocationView (per line: product, requested,\n allocated so far, available)
+else actor is a volunteer (1a)
+  S --> A : Failure(NOT_PERMITTED)
+else order does not exist (1b)
+  S --> A : Failure(NOT_FOUND)
+end
+
+loop for each order line to allocate
+  A -> S : allocateOrderLine(orderLineId)
+  alt valid and permitted
+    S --> A : LineAllocationResult (per lot used: producer, batch,\n quantity; total allocated; shortfall)
+  else actor is a volunteer (1a)
+    S --> A : Failure(NOT_PERMITTED)
+  else order line does not exist
+    S --> A : Failure(NOT_FOUND)
+  else line already fully allocated (3a)
+    S --> A : Failure(INVALID_STATE)
+  end
+end
+
+note over A, S
+  A shortfall is not a failure: the result shows it (4a)
+  and UC-06 Handle shortfall continues (S4, «extend»).
+  viewOrderForAllocation only reads data, so it has no contract.
+  allocateOrderLine changes state: contract OC-06.
+end note
+
+== UC-09 Trace item ==
+
+T -> S : traceOrderLine(orderId, productId)
+alt found and actor permitted
+  S --> T : TraceView (per allocation: producer, batch or batch missing,\n harvest and use-by dates, delivery date, quantity)
+else actor is a volunteer (1a)
+  S --> T : Failure(NOT_PERMITTED)
+else order, or a line for that product, does not exist (1b)
+  S --> T : Failure(NOT_FOUND)
+end
+
+note over T, S
+  traceOrderLine only reads data, so it has no contract.
+  An empty trace (nothing allocated yet, 2a) is a success.
+end note
+@enduml
