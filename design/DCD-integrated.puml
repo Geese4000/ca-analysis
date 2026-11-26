@@ -1,0 +1,249 @@
+@startuml DCD-integrated
+' Integrated design class diagram for CA2 (UC-02, UC-03, UC-05 with UC-11, UC-09)
+' Merged from DCD-fragment-S1, -S2 and -S3; every operation is an SSD system operation
+' or a message in an SD-S1/S2/S3 sequence diagram. Owner: Philip (DR-011). Reviewers: Danil, Alex.
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+hide empty members
+left to right direction
+
+package receiving {
+  class ReceiveDeliveryHandler <<controller>> {
+    + startReceipt(producerId : ProducerId, deliveryId : DeliveryId [0..1]) : Result<ReceiptView>
+    + addLine(deliveryId : DeliveryId, productId : ProductId) : Result<DeliveryLineId>
+    + recordLineReceipt(deliveryLineId : DeliveryLineId, supplied : Quantity, trace : TraceDetails, outcome : ReceiptOutcome, accepted : Quantity [0..1], reason : String [0..1]) : Result<LineReceiptResult>
+    + completeReceipt(deliveryId : DeliveryId) : Result<ReceiptSummary>
+  }
+  class Delivery <<entity>> {
+    - id : DeliveryId
+    - producerId : ProducerId
+    - expectedDate : LocalDate [0..1]
+    - receivedDate : LocalDate
+    - unannounced : boolean
+    - status : DeliveryStatus
+    - startedBy : UserId
+    - startedAt : DateTime
+    - completedBy : UserId [0..1]
+    - completedAt : DateTime [0..1]
+    + {static} startUnannounced(producerId : ProducerId, user : UserId, now : DateTime) : Delivery
+    + start(producerId : ProducerId, user : UserId, now : DateTime) : Result<Void>
+    + addLine(product : Product) : Result<DeliveryLine>
+    + recordLine(deliveryLineId : DeliveryLineId, supplied : Quantity, trace : TraceDetails, outcome : ReceiptOutcome, accepted : Quantity, reason : String, user : UserId, role : Role, now : DateTime) : Result<StockLot>
+    + complete(user : UserId, now : DateTime) : Result<ReceiptSummary>
+    - checkOpen() : Result<Void>
+  }
+  class DeliveryLine <<entity>> {
+    - id : DeliveryLineId
+    - expectedQuantity : Quantity [0..1]
+    - suppliedQuantity : Quantity [0..1]
+    - receivedQuantity : Quantity [0..1]
+    - acceptedQuantity : Quantity [0..1]
+    - outcome : ReceiptOutcome [0..1]
+    - outcomeReason : String [0..1]
+    - notReceived : boolean
+    - recordedBy : UserId [0..1]
+    - recordedAt : DateTime [0..1]
+    + DeliveryLine(product : Product)
+    + recordReceipt(supplied : Quantity, trace : TraceDetails, outcome : ReceiptOutcome, accepted : Quantity, reason : String, user : UserId, role : Role, now : DateTime) : Result<StockLot>
+    + markNotReceivedIfUnrecorded() : void
+    + summaryEntry() : LineSummary
+    - validateAccepted(received : Quantity, accepted : Quantity) : Result<Quantity>
+  }
+  enum ReceiptOutcome {
+    ACCEPTED
+    PARTIALLY_ACCEPTED
+    HELD
+    REJECTED
+    + permittedFor(role : Role) : boolean
+    + createsLot() : boolean
+  }
+  enum DeliveryStatus {
+    EXPECTED
+    RECEIVING
+    COMPLETE
+  }
+  class ReceiptSummary <<DTO>>
+  class LineSummary <<DTO>>
+  interface DeliveryRepository {
+    + findById(deliveryId : DeliveryId) : Optional<Delivery>
+    + findByLine(deliveryLineId : DeliveryLineId) : Optional<Delivery>
+    + save(delivery : Delivery) : void
+  }
+  interface ProducerRepository {
+    + exists(producerId : ProducerId) : boolean
+  }
+}
+
+package stockdecisions {
+  class ReleaseHeldStockHandler <<controller>> {
+    + listHeldLots() : Result<List<HeldLotView>>
+    + recordQualityCheck(lotId : StockLotId, released : Quantity, rejected : Quantity, reason : String [0..1]) : Result<QualityCheckResult>
+  }
+  class QualityCheck <<entity>> {
+    - releasedQuantity : Quantity
+    - rejectedQuantity : Quantity
+    - reason : String [0..1]
+    - checkedBy : UserId
+    - checkedAt : DateTime
+    + {static} create(released : Quantity, rejected : Quantity, reason : String, user : UserId, now : DateTime) : Result<QualityCheck>
+  }
+  class HeldLotView <<DTO>>
+  class QualityCheckResult <<DTO>>
+}
+
+package allocation {
+  class AllocateStockHandler <<controller>> {
+    + viewOrderForAllocation(orderId : OrderId) : Result<OrderAllocationView>
+    + allocateOrderLine(orderLineId : OrderLineId) : Result<LineAllocationResult>
+  }
+  class TraceItemHandler <<controller>> {
+    + traceOrderLine(orderId : OrderId, productId : ProductId) : Result<TraceView>
+  }
+  class Order <<entity>> {
+    - id : OrderId
+    - customerId : CustomerId
+    - requiredDate : LocalDate
+    + productOf(orderLineId : OrderLineId) : ProductId
+    + allocateLine(orderLineId : OrderLineId, lots : List<StockLot>, user : UserId, now : DateTime) : Result<LineAllocationResult>
+    + lineFor(productId : ProductId) : Optional<OrderLine>
+  }
+  class OrderLine <<entity>> {
+    - id : OrderLineId
+    - requestedQuantity : Quantity
+    + allocateFrom(lots : List<StockLot>, user : UserId, now : DateTime) : Result<LineAllocationResult>
+    + shortfall() : Quantity
+    + traceEntries() : List<TraceEntry>
+  }
+  class Allocation <<entity>> {
+    - id : AllocationId
+    - quantity : Quantity
+    - allocatedBy : UserId
+    - allocatedAt : DateTime
+    + Allocation(lot : StockLot, quantity : Quantity, user : UserId, now : DateTime)
+    + traceEntry() : TraceEntry
+  }
+  class LineAllocationResult <<DTO>>
+  class TraceView <<DTO>>
+  class TraceEntry <<DTO>>
+  class OrderAllocationView <<DTO>>
+  interface OrderRepository {
+    + findById(orderId : OrderId) : Optional<Order>
+    + findByLine(orderLineId : OrderLineId) : Optional<Order>
+    + save(order : Order) : void
+  }
+}
+
+package shared {
+  class StockLot <<entity>> {
+    - id : StockLotId
+    - acceptedQuantity : Quantity
+    - heldQuantity : Quantity
+    - writtenOffQuantity : Quantity
+    - allocatedQuantity : Quantity
+    + StockLot(product : Product, acceptedQuantity : Quantity, heldQuantity : Quantity, trace : TraceDetails)
+    + availableQuantity() : Quantity
+    + recordCheck(released : Quantity, rejected : Quantity, reason : String, user : UserId, role : Role, now : DateTime) : Result<Void>
+    + heldView() : HeldLotView
+    + allocate(quantity : Quantity) : Result<Void>
+    + expiresBefore(other : StockLot) : boolean
+    + traceDetails() : TraceDetails
+    - moveQuantities(released : Quantity, rejected : Quantity) : void
+  }
+  note bottom of StockLot
+    availableQuantity() = acceptedQuantity − allocatedQuantity
+    held and written-off quantities are never available (BR-01, NFR-04)
+  end note
+  class Product <<entity>> {
+    - id : ProductId
+    - sellingUnit : SellingUnit
+    - perishable : boolean
+    - conversions : Map<SellingUnit, Decimal>
+    + toSellingUnit(supplied : Quantity) : Result<Quantity>
+  }
+  class TraceDetails <<value>> {
+    - producerId : ProducerId
+    - deliveryDate : LocalDate
+    - batchCode : String [0..1]
+    - batchMissing : boolean
+    - harvestDate : LocalDate [0..1]
+    - useByDate : LocalDate [0..1]
+    + completedWith(producerId : ProducerId, deliveryDate : LocalDate) : Result<TraceDetails>
+    - validate() : Result<Void>
+  }
+  enum Role {
+    VOLUNTEER
+    STAFF
+    MANAGER
+    + mayRelease() : boolean
+    + mayReject() : boolean
+    + isAtLeast(role : Role) : boolean
+  }
+  interface StockLotRepository {
+    + findById(id : StockLotId) : Optional<StockLot>
+    + findHeld() : List<StockLot>
+    + findAvailable(productId : ProductId) : List<StockLot>
+    + save(lot : StockLot) : void
+  }
+  interface ProductRepository {
+    + findById(productId : ProductId) : Optional<Product>
+  }
+  interface AuditContext {
+    + currentUser() : UserId
+    + currentRole() : Role
+  }
+  interface Clock {
+    + now() : DateTime
+  }
+}
+
+' Controllers depend only on ports and their aggregate roots (DR-005, Low Coupling)
+ReceiveDeliveryHandler ..> DeliveryRepository
+ReceiveDeliveryHandler ..> ProducerRepository
+ReceiveDeliveryHandler ..> ProductRepository
+ReceiveDeliveryHandler ..> StockLotRepository
+ReceiveDeliveryHandler ..> AuditContext
+ReceiveDeliveryHandler ..> Clock
+ReceiveDeliveryHandler ..> Delivery
+ReleaseHeldStockHandler ..> StockLotRepository
+ReleaseHeldStockHandler ..> AuditContext
+ReleaseHeldStockHandler ..> Clock
+ReleaseHeldStockHandler ..> StockLot
+AllocateStockHandler ..> OrderRepository
+AllocateStockHandler ..> StockLotRepository
+AllocateStockHandler ..> AuditContext
+AllocateStockHandler ..> Clock
+AllocateStockHandler ..> Order
+TraceItemHandler ..> OrderRepository
+TraceItemHandler ..> AuditContext
+TraceItemHandler ..> Order
+
+' Receipt aggregate (S1)
+Delivery "1" *-- "0..*" DeliveryLine : lines
+Delivery --> DeliveryStatus
+Delivery ..> TraceDetails
+Delivery ..> ReceiptSummary : creates
+ReceiptSummary *-- LineSummary
+DeliveryLine "0..*" --> "1" Product : product
+DeliveryLine --> ReceiptOutcome
+DeliveryLine "1" --> "0..1" StockLot : yields
+ReceiptOutcome ..> Role
+
+' Stock lot lifecycle (S2), shared by all three use cases
+StockLot "0..*" --> "1" Product : product
+StockLot "1" *-- "1" TraceDetails : trace
+StockLot "1" *-- "0..*" QualityCheck : checks
+StockLot ..> Role
+StockLot ..> HeldLotView : creates
+ReleaseHeldStockHandler ..> QualityCheckResult : creates
+
+' Allocation aggregate (S3)
+Order "1" *-- "1..*" OrderLine : lines
+OrderLine "0..*" --> "1" Product : product
+OrderLine "1" *-- "0..*" Allocation : is fulfilled by
+Allocation "0..*" --> "1" StockLot : draws from
+OrderLine ..> LineAllocationResult : creates
+Allocation ..> TraceEntry : creates
+LineAllocationResult *-- TraceEntry
+TraceView *-- TraceEntry
+@enduml

@@ -1,5 +1,5 @@
 @startuml DCD-fragment-S1
-' S1 input to the integrated design class diagram (owner Zak)
+' Working input to DCD-integrated.puml; the integrated diagram is authoritative
 ' Every operation is either an SSD-S1 system operation or a message in SD-S1a, SD-S1b or SD-S1c
 ' Attribute names follow the domain model (acceptedQuantity, heldQuantity, ...)
 skinparam shadowing false
