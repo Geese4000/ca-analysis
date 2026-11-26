@@ -1,5 +1,5 @@
 @startuml DCD-fragment-S3
-' S3 input to the integrated design class diagram (owner Zak)
+' Working input to DCD-integrated.puml; the integrated diagram is authoritative
 ' Every operation is either an SSD-S3 system operation or a message in SD-S3a or SD-S3b
 ' Shared classes show only what S3 uses or adds (marked "S3 adds"); the rest is in DCD-fragment-S1
 skinparam shadowing false

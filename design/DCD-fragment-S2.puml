@@ -1,3 +1,4 @@
+' Working input to DCD-integrated.puml; the integrated diagram is authoritative
 @startuml DCD-fragment-S2
 skinparam shadowing false
 skinparam classAttributeIconSize 0
