@@ -1,0 +1,56 @@
+@startuml SD-S3-trace-order-line
+' Object-interaction sequence diagram for traceOrderLine (UC-09, read-only, no contract)
+' First message matches SSD-S3 exactly; every other message is an operation in DCD-fragment-S3
+hide footbox
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+
+title SD-S3b traceOrderLine (UC-09)
+
+actor "Traceability coordinator\n(STAFF role)" as T
+participant ":TraceItemHandler" as H
+participant "audit:AuditContext" as A
+participant "role:Role" as R
+participant "orders:OrderRepository" as OR
+participant "o:Order" as O
+participant "ol:OrderLine" as OL
+participant "a:Allocation" as AL
+participant "lot:StockLot" as L
+
+T -> H : traceOrderLine(orderId, productId)
+activate H
+H -> A : currentRole() : Role
+H -> R : isAtLeast(STAFF) : boolean
+alt volunteer (UC-09 1a)
+  H --> T : Failure(NOT_PERMITTED)
+else staff or manager
+  H -> OR : findById(orderId) : Optional<Order>
+  alt order not found (UC-09 1b)
+    H --> T : Failure(NOT_FOUND)
+  else found
+    H -> O : lineFor(productId) : Optional<OrderLine>
+    alt no line for that product (UC-09 1b)
+      H --> T : Failure(NOT_FOUND)
+    else line found
+      H -> OL : traceEntries() : List<TraceEntry>
+      activate OL
+      loop each allocation of the line (none: empty trace, UC-09 2a)
+        ' Information Expert: the allocation knows its lot and quantity (BR-03)
+        OL -> AL : traceEntry() : TraceEntry
+        activate AL
+        AL -> L : traceDetails() : TraceDetails
+        deactivate AL
+      end
+      OL --> H : entries
+      deactivate OL
+      H --> T : Success(TraceView(entries))
+    end
+  end
+end
+deactivate H
+
+note over T, L
+  Read-only: nothing is created, changed or saved.
+  A missing batch is shown as batchMissing (UC-09 2b, A-03).
+end note
+@enduml

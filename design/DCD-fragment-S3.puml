@@ -1,0 +1,150 @@
+@startuml DCD-fragment-S3
+' S3 input to the integrated design class diagram (owner Zak)
+' Every operation is either an SSD-S3 system operation or a message in SD-S3a or SD-S3b
+' Shared classes show only what S3 uses or adds (marked "S3 adds"); the rest is in DCD-fragment-S1
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+hide empty members
+
+package allocation {
+  class AllocateStockHandler <<controller>> {
+    - orders : OrderRepository
+    - stockLots : StockLotRepository
+    - audit : AuditContext
+    - clock : Clock
+    + viewOrderForAllocation(orderId : OrderId) : Result<OrderAllocationView>
+    + allocateOrderLine(orderLineId : OrderLineId) : Result<LineAllocationResult>
+  }
+
+  class TraceItemHandler <<controller>> {
+    - orders : OrderRepository
+    - audit : AuditContext
+    + traceOrderLine(orderId : OrderId, productId : ProductId) : Result<TraceView>
+  }
+
+  class LineAllocationResult <<DTO>> {
+    + entries : List<TraceEntry>
+    + totalAllocated : Quantity
+    + shortfall : Quantity
+  }
+
+  class TraceView <<DTO>> {
+    + entries : List<TraceEntry>
+  }
+
+  class TraceEntry <<DTO>> {
+    + stockLotId : StockLotId
+    + producerId : ProducerId
+    + batchCode : String [0..1]
+    + batchMissing : boolean
+    + harvestDate : LocalDate [0..1]
+    + useByDate : LocalDate [0..1]
+    + deliveryDate : LocalDate
+    + quantity : Quantity
+  }
+
+  class OrderAllocationView <<DTO>>
+  note right of OrderAllocationView
+    Read-only view for viewOrderForAllocation:
+    per line product, requested, allocated so far
+    and available. No contract, not sequenced.
+  end note
+}
+
+package shared {
+  class Order <<entity>> {
+    - id : OrderId
+    - customerId : CustomerId
+    - requiredDate : LocalDate
+    + productOf(orderLineId : OrderLineId) : ProductId
+    + allocateLine(orderLineId : OrderLineId, lots : List<StockLot>, user : UserId, now : DateTime) : Result<LineAllocationResult>
+    + lineFor(productId : ProductId) : Optional<OrderLine>
+  }
+
+  class OrderLine <<entity>> {
+    - id : OrderLineId
+    - requestedQuantity : Quantity
+    + allocateFrom(lots : List<StockLot>, user : UserId, now : DateTime) : Result<LineAllocationResult>
+    + shortfall() : Quantity
+    + traceEntries() : List<TraceEntry>
+  }
+  note right of OrderLine
+    Preference attributes (acceptsReducedQuantity,
+    acceptsRemoval, substitutes) are added by S4.
+  end note
+
+  class Allocation <<entity>> {
+    - id : AllocationId
+    - quantity : Quantity
+    - allocatedBy : UserId
+    - allocatedAt : DateTime
+    + Allocation(lot : StockLot, quantity : Quantity, user : UserId, now : DateTime)
+    + traceEntry() : TraceEntry
+  }
+
+  class StockLot <<entity>> {
+    - id : StockLotId
+    - acceptedQuantity : Quantity
+    - allocatedQuantity : Quantity
+    + availableQuantity() : Quantity
+    + allocate(quantity : Quantity) : Result<Void>
+    + expiresBefore(other : StockLot) : boolean
+    + traceDetails() : TraceDetails
+  }
+  note right of StockLot
+    S3 adds allocatedQuantity, allocate,
+    expiresBefore and traceDetails.
+    availableQuantity() = accepted − allocated
+    (interface catalogue §5.3).
+  end note
+
+  class TraceDetails <<value>>
+  class Product <<entity>>
+
+  enum Role {
+    VOLUNTEER
+    STAFF
+    MANAGER
+    + isAtLeast(role : Role) : boolean
+  }
+
+  interface OrderRepository {
+    + findById(orderId : OrderId) : Optional<Order>
+    + findByLine(orderLineId : OrderLineId) : Optional<Order>
+    + save(order : Order) : void
+  }
+  interface StockLotRepository {
+    + findAvailable(productId : ProductId) : List<StockLot>
+    + save(lot : StockLot) : void
+  }
+  interface AuditContext {
+    + currentUser() : UserId
+    + currentRole() : Role
+  }
+  interface Clock {
+    + now() : DateTime
+  }
+}
+
+AllocateStockHandler ..> OrderRepository
+AllocateStockHandler ..> StockLotRepository
+AllocateStockHandler ..> AuditContext
+AllocateStockHandler ..> Clock
+AllocateStockHandler ..> Role
+AllocateStockHandler ..> Order
+TraceItemHandler ..> OrderRepository
+TraceItemHandler ..> AuditContext
+TraceItemHandler ..> Role
+TraceItemHandler ..> Order
+
+Order "1" *-- "1..*" OrderLine : lines
+OrderLine "0..*" --> "1" Product : product
+OrderLine "1" *-- "0..*" Allocation : is fulfilled by
+Allocation "0..*" --> "1" StockLot : draws from
+StockLot "0..*" --> "1" Product : product
+StockLot "1" *-- "1" TraceDetails : trace
+OrderLine ..> LineAllocationResult : creates
+Allocation ..> TraceEntry : creates
+LineAllocationResult *-- TraceEntry
+TraceView *-- TraceEntry
+@enduml

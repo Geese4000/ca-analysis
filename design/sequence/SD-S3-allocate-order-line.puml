@@ -1,0 +1,80 @@
+@startuml SD-S3-allocate-order-line
+' Object-interaction sequence diagram for OC-06 allocateOrderLine (UC-05 steps 3-6)
+' First message matches SSD-S3 exactly; every other message is an operation in DCD-fragment-S3
+hide footbox
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+
+title SD-S3a allocateOrderLine (OC-06)
+
+actor "Hub staff member" as S
+participant ":AllocateStockHandler" as H
+participant "audit:AuditContext" as A
+participant "role:Role" as R
+participant "clock:Clock" as C
+participant "orders:OrderRepository" as OR
+participant "o:Order" as O
+participant "ol:OrderLine" as OL
+participant "stockLots:StockLotRepository" as SR
+participant "lot:StockLot" as L
+
+S -> H : allocateOrderLine(orderLineId)
+activate H
+H -> A : currentRole() : Role
+H -> R : isAtLeast(STAFF) : boolean
+alt volunteer (UC-05 1a)
+  H --> S : Failure(NOT_PERMITTED)
+else staff or manager
+  H -> A : currentUser() : UserId
+  H -> C : now() : DateTime
+  H -> OR : findByLine(orderLineId) : Optional<Order>
+  alt order line not found
+    H --> S : Failure(NOT_FOUND)
+  else found
+    H -> O : productOf(orderLineId) : ProductId
+    H -> SR : findAvailable(productId) : List<StockLot>
+    H -> O : allocateLine(orderLineId, lots, user, now)
+    activate O
+    O -> OL : allocateFrom(lots, user, now)
+    activate OL
+    OL -> OL : shortfall() : Quantity
+    alt nothing outstanding (UC-05 3a)
+      OL --> O : Failure(INVALID_STATE)
+    else quantity outstanding
+      ' Information Expert: each lot compares its own dates (DR-010)
+      OL -> L : expiresBefore(other) : boolean
+      note right of OL : repeated to sort the lots,\nearliest use-by first
+      loop each lot in order, while outstanding > 0
+        OL -> L : availableQuantity() : Quantity
+        ' take = smaller of outstanding and available
+        OL -> L : allocate(take) : Result<Void>
+        ' Creator (DR-010): the line records its allocations and holds the data
+        create "a:Allocation" as AL
+        OL -> AL : <<create>> Allocation(lot, take, user, now)
+        OL -> AL : traceEntry() : TraceEntry
+        activate AL
+        AL -> L : traceDetails() : TraceDetails
+        deactivate AL
+      end
+      OL --> O : Success(LineAllocationResult)
+    end
+    deactivate OL
+    O --> H : Result<LineAllocationResult>
+    deactivate O
+    opt success
+      H -> OR : save(o)
+      loop each lot used
+        H -> SR : save(lot)
+      end
+    end
+    H --> S : Result<LineAllocationResult>
+  end
+end
+deactivate H
+
+note over S, L
+  A shortfall left on the line is still a success (UC-05 4a);
+  UC-06 Handle shortfall continues from it (S4).
+  Every failure returns before any save, so nothing changes (OC-06).
+end note
+@enduml
