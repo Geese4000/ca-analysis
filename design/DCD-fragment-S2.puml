@@ -1,0 +1,82 @@
+@startuml DCD-fragment-S2
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+hide empty members
+
+package stockdecisions {
+  class ReleaseHeldStockHandler {
+    - stockLots : StockLotRepository
+    - audit : AuditContext
+    - clock : Clock
+    + listHeldLots() : Result<List<HeldLotView>>
+    + recordQualityCheck(lotId : StockLotId, released : Quantity, rejected : Quantity, reason : String [0..1]) : Result<QualityCheckResult>
+  }
+
+  class QualityCheck {
+    - released : Quantity
+    - rejected : Quantity
+    - reason : String [0..1]
+    - checkedBy : UserId
+    - checkedAt : DateTime
+    + {static} create(released : Quantity, rejected : Quantity, reason : String, user : UserId, now : DateTime) : Result<QualityCheck>
+  }
+
+  class HeldLotView <<DTO>> {
+    + lotId : StockLotId
+    + productId : ProductId
+    + producerId : ProducerId
+    + batchCode : String [0..1]
+    + held : Quantity
+  }
+
+  class QualityCheckResult <<DTO>> {
+    + available : Quantity
+    + held : Quantity
+    + writtenOff : Quantity
+  }
+}
+
+package shared {
+  class StockLot {
+    - accepted : Quantity
+    - held : Quantity
+    - writtenOff : Quantity
+    + recordCheck(released : Quantity, rejected : Quantity, reason : String, user : UserId, role : Role, now : DateTime) : Result<Void>
+    + heldView() : HeldLotView
+    + availableQuantity() : Quantity
+    + heldQuantity() : Quantity
+    + writtenOffQuantity() : Quantity
+    - moveQuantities(released : Quantity, rejected : Quantity) : void
+  }
+
+  enum Role {
+    VOLUNTEER
+    STAFF
+    MANAGER
+    + mayRelease() : boolean
+    + mayReject() : boolean
+  }
+
+  interface StockLotRepository {
+    + findById(id : StockLotId) : Optional<StockLot>
+    + findHeld() : List<StockLot>
+    + save(lot : StockLot) : void
+  }
+  interface AuditContext {
+    + currentUser() : UserId
+    + currentRole() : Role
+  }
+  interface Clock {
+    + now() : DateTime
+  }
+}
+
+ReleaseHeldStockHandler ..> StockLotRepository
+ReleaseHeldStockHandler ..> AuditContext
+ReleaseHeldStockHandler ..> Clock
+ReleaseHeldStockHandler ..> StockLot
+ReleaseHeldStockHandler ..> QualityCheckResult : creates
+StockLot "1" *-- "0..*" QualityCheck : checks
+StockLot ..> Role
+StockLot ..> HeldLotView : creates
+@enduml

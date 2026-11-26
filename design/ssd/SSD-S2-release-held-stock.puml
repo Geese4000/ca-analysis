@@ -1,0 +1,33 @@
+@startuml SSD-S2-release-held-stock
+' System sequence diagram for UC-03 Release held stock, slice S2
+' Black-box view: one actor, the system as a single lifeline, system events and returned outcomes only
+hide footbox
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+
+title SSD-S2 Release held stock (UC-03)
+
+actor "Hub staff member" as A
+participant ":KerryHubSystem" as S
+
+A -> S : listHeldLots()
+S --> A : list of HeldLotView (lotId, product, producer,\n batch, held quantity)
+
+A -> S : recordQualityCheck(lotId, released: Quantity,\n  rejected: Quantity, reason)
+alt valid and permitted
+  S --> A : QualityCheckResult (available, held, written off)
+else lot does not exist
+  S --> A : Failure(NOT_FOUND)
+else volunteer, or non-manager rejects (1a, 4c)
+  S --> A : Failure(NOT_PERMITTED)
+else lot has no held quantity (3a)
+  S --> A : Failure(INVALID_STATE)
+else more than held, both zero, or reject with no reason (4d, 4e)
+  S --> A : Failure(INVALID_QUANTITY)
+end
+
+note over A, S
+  listHeldLots only reads data, so it has no operation contract.
+  recordQualityCheck changes state: contract OC-05.
+end note
+@enduml

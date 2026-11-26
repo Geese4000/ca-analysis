@@ -1,0 +1,73 @@
+@startuml SD-S2-release-held-stock
+' Object-interaction sequence diagram for UC-03 (listHeldLots query and OC-05 recordQualityCheck)
+hide footbox
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+
+title SD-S2 Release held stock (UC-03, OC-05)
+
+participant ":ReleaseHeldStockHandler" as H
+participant "audit:AuditContext" as A
+participant "clock:Clock" as C
+participant "stockLots:StockLotRepository" as R
+participant "lot:StockLot" as L
+participant "role:Role" as RO
+participant "qc:QualityCheck" as Q
+
+== listHeldLots ==
+
+-> H : listHeldLots()
+activate H
+H -> R : findHeld() : List<StockLot>
+loop for each lot
+  H -> L : heldView() : HeldLotView
+end
+<-- H : Result<List<HeldLotView>>
+deactivate H
+
+== recordQualityCheck (OC-05) ==
+
+-> H : recordQualityCheck(lotId, released,\n  rejected, reason)
+activate H
+H -> A : currentUser() : UserId
+H -> A : currentRole() : Role
+H -> C : now() : DateTime
+H -> R : findById(lotId) : Optional<StockLot>
+alt lot not found
+  <-- H : Failure(NOT_FOUND)
+else found
+  H -> L : recordCheck(released, rejected, reason,\n  user, role, now)
+  activate L
+  L -> RO : mayRelease() : boolean
+  L -> RO : mayReject() : boolean
+  alt volunteer, or rejected > 0 and not manager (A-04, RC-06)
+    H <-- L : Failure(NOT_PERMITTED)
+  else no held quantity
+    H <-- L : Failure(INVALID_STATE)
+  else permitted and held > 0
+    create Q
+    L -> Q : <<create>> create(released, rejected,\n  reason, user, now) : Result<QualityCheck>
+    alt negative, both zero, no reason for reject,\nor released + rejected > held
+      H <-- L : Failure(INVALID_QUANTITY)
+    else valid
+      L -> L : moveQuantities(released, rejected)
+      note right of L
+        held -= released + rejected
+        accepted += released
+        writtenOff += rejected
+        checks.add(qc)
+      end note
+      H <-- L : Success
+    end
+  end
+  deactivate L
+  opt success
+    H -> R : save(lot)
+    H -> L : availableQuantity() : Quantity
+    H -> L : heldQuantity() : Quantity
+    H -> L : writtenOffQuantity() : Quantity
+  end
+  <-- H : Result<QualityCheckResult>
+end
+deactivate H
+@enduml
