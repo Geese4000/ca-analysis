@@ -1,0 +1,89 @@
+@startuml package-view
+' Package and layer view for CA2 (DES-26), see design/interface-catalogue.md section 7
+' Slices depend only on shared, never on each other
+' Handler names for S3 and S4 are confirmed in DES-24 and DES-25
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+hide empty members
+hide circle
+top to bottom direction
+
+title Package and layer view (DES-26)
+
+package "Presentation (out of scope)" as presentation {
+  class "Volunteer and staff screens" as Screens
+}
+
+package "Use-case slices: application + slice domain" as slices {
+
+  package "receiving – S1 (UC-02, UC-11)" as receiving {
+    class ReceiveDeliveryHandler <<controller>>
+    class Delivery <<entity>>
+    class DeliveryLine <<entity>>
+    enum ReceiptOutcome
+    interface DeliveryRepository
+    interface ProducerRepository
+  }
+
+  package "stockdecisions – S2 (UC-03)" as stockdecisions {
+    class ReleaseHeldStockHandler <<controller>>
+    class QualityCheck <<entity>>
+  }
+
+  package "allocation – S3 (UC-05, UC-09)" as allocation {
+    class AllocateStockHandler <<controller>>
+    class TraceItemHandler <<controller>>
+  }
+
+  package "shortfall – S4 (UC-06)" as shortfall {
+    class HandleShortfallHandler <<controller>>
+    interface AllocationPolicy
+    interface NotificationPort
+  }
+}
+
+package "shared" as shared {
+
+  package "shared.domain" as shareddomain {
+    class Product <<entity>>
+    class StockLot <<entity>>
+    class Order <<entity>>
+    class OrderLine <<entity>>
+    class Allocation <<entity>>
+    class Customer <<entity>>
+    class TraceDetails <<value>>
+    class Quantity <<value>>
+    enum Role
+  }
+
+  package "shared.ports" as sharedports {
+    interface AuditContext
+    interface Clock
+    interface ProductRepository
+    interface StockLotRepository
+    interface OrderRepository
+  }
+
+  package "shared.result" as sharedresult {
+    class "Result<T>" as Result
+    enum ErrorCode
+  }
+}
+
+presentation ..> slices : calls system operations
+
+receiving ..> shared
+stockdecisions ..> shared
+allocation ..> shared
+shortfall ..> shared
+
+sharedports ..> shareddomain
+shareddomain ..> sharedresult
+
+note right of slices
+  No arrows between slices:
+  each use case depends only on shared,
+  so the four were designed in parallel.
+end note
+@enduml
